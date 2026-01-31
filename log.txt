@@ -38,6 +38,7 @@
       5. create data loaders
       6. train the model my looping through number of epochs
       7. save the model and label encoder
+  - for fine tuning models, epochs are low
   - final: completed the script but not yet debugged
 
 29Jan: writing code for deployment notebook and inference.py
@@ -51,5 +52,5 @@
   - DistilBertTokenizer can return tokens in tensors for different frameworks, in my case return_tensor=pt
   - I can save configurations of the model instead of reconstructing the model in inference.py
   - label encoding before train test split can cause data leakage
-
-  - final: training the sample (5% data) 
+  - used 5% of the data to test the whole pipeline before using all the data
+  - final: completed training and deploying the model with ~95% validation accuracy in last epoch
