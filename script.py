@@ -155,9 +155,9 @@ def main():
     df = df[['TITLE', 'CATEGORY']]
 
     #This is just a tip
-    df = df.sample(frac=0.05,random_state=1)
+    #df = df.sample(frac=0.05,random_state=1)
 
-    df = df.reset_index(drop=True)
+    #df = df.reset_index(drop=True)
     #This is where the tip ends
 
     #train test split
