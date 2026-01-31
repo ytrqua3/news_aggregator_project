@@ -46,3 +46,5 @@
   - model and input tensors must be on the same device -> e.g. ids.to(device)
   - item() only works on single element tensors. use tolist() otherwise
   - DistilBertTokenizer can return tokens in tensors for different frameworks, in my case return_tensor=pt
+  - I can save configurations of the model instead of reconstructing the model in inference.py
+  - label encoding before train test split can cause data leakage
