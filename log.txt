@@ -38,9 +38,12 @@
       5. create data loaders
       6. train the model my looping through number of epochs
       7. save the model and label encoder
+  - final: completed the script but not yet debugged
 
 29Jan: writing code for deployment notebook and inference.py
   - save label encoder in script.py as a part of the model using joblib
+
+  - final: completed the script but not yet debugged
 
 30Jan: writing smoke test code. debugging and training the models
   - model and input tensors must be on the same device -> e.g. ids.to(device)
@@ -48,3 +51,5 @@
   - DistilBertTokenizer can return tokens in tensors for different frameworks, in my case return_tensor=pt
   - I can save configurations of the model instead of reconstructing the model in inference.py
   - label encoding before train test split can cause data leakage
+
+  - final: training the sample (5% data) 
