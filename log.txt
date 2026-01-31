@@ -1,0 +1,16 @@
+22Jan: Started "AI Engineering: Build, Train and Deploy Models with AWS SageMaker" by Patrik Szepesi in zerotomastery.io 
+  - Puropose: to learn how to deply a machine learning model using hugging face in sagemaker for my music preference project
+  - deployed a trained sentiment analysis model to get an idea of how huggingface and sagemaker work together (code is not included in this repo)
+
+24Jan: Understanding mechanisms behind neural networks
+  - how neural network combines different functions to fit a curve to datapoints(Statquest)
+      -> backpropagation, gradient decent, activation functions
+
+25-27Jan: Understanding LLM (DistilBert)
+  -
+
+28Jan: writing code for training notebook and script.py
+
+29Jan: writing code for deployment notebook and inference.py
+
+30Jan: writing smoke test code and training the models
