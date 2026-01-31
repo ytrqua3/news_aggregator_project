@@ -7,36 +7,35 @@ import argparse
 import os
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
+import joblib
 
 #custom Dataset class
 class NewsDataset(Dataset):
     def __init__(self, df, tokenizer, max_len):
         self.data = df
-        self.tokenizer = tokenizer,
-        self.len = len(df),
-        self.max_len = max_len,
+        self.tokenizer = tokenizer
+        self.len = len(df)
+        self.max_len = max_len
 
+    #returns dictionary of tokenized input information from one news title
     def __getitem__(self, index):
-        title = " ".join(str(self.data.iloc[0, index]).split())
+        title = " ".join(str(self.data.iloc[index]['TITLE']).split())
 
-        inputs = self.tokenizer.encode_plus(
+        inputs = self.tokenizer(
             title,
-            None,
             add_special_tokens = True,
-            max_length=self.max_len,
+            max_length=self.max_len,    
             padding='max_length',
             truncation=True,
-            return_token_type_ids=True,
-            return_attention_mask=True
-        )
-
-        ids = inputs['inpput_ids']
-        mask = inputs['attention_mask']
+            return_token_type_ids=False,
+            return_attention_mask=True,
+            return_tensors='pt'
+        ) #returns a dict of (1, max_len) tensors
 
         return {
-            'ids': torch.tensor(ids, dtype=torch.long),
-            'mask': torch.tensor(mask, dtype=torch.long),
-            'targets': torch.tensor(self.data.iloc[2, index], dtype=torch.long)
+            'ids': inputs['input_ids'].squeeze(0), #squeeze(dim) discards dimensions with size 1
+            'mask': inputs['attention_mask'].squeeze(0),
+            'targets': torch.tensor(self.data.iloc[index]['label'], dtype=torch.long)
         }
 
     def __len__(self):
@@ -46,11 +45,12 @@ class NewsDataset(Dataset):
 #create class for the model
 class DistilBERTClass(torch.nn.Module):
     def __init__(self):
-        super(DistilBERTClass, self).__init__
+        super(DistilBERTClass, self).__init__()
         self.l1=DistilBertModel.from_pretrained('distilbert-base-uncased') #base model
         self.pre_classifier = torch.nn.Linear(768,768)
         self.dropout = torch.nn.Dropout(0.3)
         self.classifier = torch.nn.Linear(768,4) #outputs 4 possible categories
+        self.relu = torch.nn.ReLU()
 
     #defines the structure of the neural network
     def forward(self, input_ids, attention_mask):
@@ -60,10 +60,10 @@ class DistilBERTClass(torch.nn.Module):
         #BERT forces [CLS] to be sentence-level via a pooler and training objectives; DistilBERT allows [CLS] to summarize the sentence, but does not explicitly train it to do so.
         #feed pooler into the self defined neural network
         pooler = self.pre_classifier(pooler)
-        pooler = torch.nn.ReLU(pooler)
+        pooler = self.relu(pooler)
         pooler = self.dropout(pooler)
-        output = self.classifier(pooler)
-        return output
+        logits = self.classifier(pooler)
+        return logits
 
 
 def train(epoch, model, device, training_loader, optimizer, loss_function):
@@ -85,10 +85,11 @@ def train(epoch, model, device, training_loader, optimizer, loss_function):
         output = model(ids, mask) #trained to be in the exact order defined by your dataset’s label encoding
 
         #calculate metrics
-        true_loss += loss_function(output, targets).item()
+        loss = loss_function(output, targets)
+        true_loss += loss.item()
         true_steps += 1
-        big_val, big_idx = torch.max(output.data, dim=1) #(batch_size,)
-        n_correct += (big_idx == targets).sum().items()
+        big_idx = torch.argmax(output, dim=1) #(batch_size,)
+        n_correct += (big_idx == targets).sum().item()
         n_examples += targets.size(0) #increment by batch size
 
         #every 5000 batches
@@ -99,12 +100,13 @@ def train(epoch, model, device, training_loader, optimizer, loss_function):
         #backward
         optimizer.zero_grad() #reset gradient
         loss.backward() #backward propagation
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0) #avoid gradient exploading
         optimizer.step() #make changes to parameters based on gradient
 
     print(f"Epoch {epoch} Training loss: {true_loss/true_steps}")
     print(f"Epoch {epoch} Training Accuracy: {n_correct/n_examples}")
 
-def valid(epoch, model, testing_loader, device, loss_function):
+def valid(epoch, model, device, testing_loader, loss_function):
     true_loss = 0
     n_correct = 0
     true_steps = 0
@@ -120,10 +122,10 @@ def valid(epoch, model, testing_loader, device, loss_function):
 
             outputs = model(ids, mask)
 
-            true_loss += loss_function(output, targets).item()
+            true_loss += loss_function(outputs, targets).item()
             true_steps += 1
-            big_val, big_idx = torch.max(output.data, dim=1)
-            n_correct += (big_idx == targets).sum().items()
+            big_idx = torch.argmax(outputs, dim=1)
+            n_correct += (big_idx == targets).sum().item()
             n_examples += targets.size(0)
 
             if _%1000 == 0:
@@ -141,7 +143,7 @@ def main():
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--train_batch_size", type=int, default=4)
     parser.add_argument("--valid_batch_size", type=int, default=2)
-    parser.add_argument("--learning_rate", type=int, default=5e-5)
+    parser.add_argument("--learning_rate", type=float, default=5e-5)
     parser.add_argument("--data_path", type=str, default="news-aggregator-sadrian-bucket/newsCorpora.csv")
     parser.add_argument("--seq_max_len", type=int, default=512)
 
@@ -152,10 +154,11 @@ def main():
     'PUBLISHER', 'CATEGORY', 'STORY', 'HOSTNAME', 'TIMESTAMP'])
     df = df[['TITLE', 'CATEGORY']]
 
-    #encode different categories
-    le = LabelEncoder()
-    df['label'] = le.fit_transform(df['CATEGORY'])
-    print("Successfully labelled data")
+    #This is just a tip
+    df = df.sample(frac=0.05,random_state=1)
+
+    df = df.reset_index(drop=True)
+    #This is where the tip ends
 
     #train test split
     train_size = 0.8
@@ -168,6 +171,21 @@ def main():
     print(f"train dataset:{train_df.shape}")
     print(f"validaiton dataset:{valid_df.shape}")
 
+    #encode different categories
+    le = LabelEncoder()
+    train_df['label'] = le.fit_transform(train_df['CATEGORY'])
+    valid_df['label'] = le.transform(valid_df['CATEGORY'])
+    joblib.dump(le, os.path.join(os.environ['SM_MODEL_DIR'], 'label_encoder.joblib'))
+    print("Successfully labelled data")
+
+    #define elements for training
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = DistilBERTClass().to(device)
+    optimizer = torch.optim.Adam(params = model.parameters(), lr=args.learning_rate)
+    loss_function = torch.nn.CrossEntropyLoss()
+    tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
+
+
     #create loaders
     train_dataset = NewsDataset(train_df, tokenizer, args.seq_max_len)
     valid_dataset = NewsDataset(valid_df, tokenizer, args.seq_max_len)
@@ -179,7 +197,7 @@ def main():
     }
     valid_parameters={
         'batch_size': args.valid_batch_size,
-        'shuffle': True,
+        'shuffle': False,
         'num_workers': 0
     }
 
@@ -187,29 +205,25 @@ def main():
     valid_loader = DataLoader(valid_dataset, **valid_parameters)
     print("data loaders created successfully")
 
-    #define elements for training
-    tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
-    model = DistilBertClass()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    optimizer = torch.optim.Adam(params = model.parameters(), lr=args.learning_rate)
-    loss_function = torch.nn.CrossEntropy()
-
     #train loop
     print("Starting training process")
-    for epoch in range(EPOCHS):
+    for epoch in range(args.epochs):
         print(f"starting Epoch {epoch}...")
-        train(epoch, model, device, training_loader, optimizer, loss_function)
-        valid(epoch, model, device, testing_loader, loss_function)
+        train(epoch, model, device, train_loader, optimizer, loss_function)
+        valid(epoch, model, device, valid_loader, loss_function)
     print("model successfully trained")
 
     #save the model
     output_dir = os.environ['SM_MODEL_DIR']
 
     print("saving model into s3")
-    output_model_path = os.join(output_dir, 'pytorch_distilbert_news.bin')
+    output_model_path = os.path.join(output_dir, 'pytorch_distilbert_news.bin')
     torch.save(model.state_dict(), output_model_path)
-    output_vocab_path = os.join(output_dir, 'vocab_distilbert_news.bin')
-    tokenizer.save_vocabulary(output_vocab_file)
+    output_vocab_path = os.path.join(output_dir, 'tokenizer')
+    os.makedirs(output_vocab_path, exist_ok=True)
+    tokenizer.save_vocabulary(output_vocab_path)
+ 
+
     print("sucessfully ended script.py")
 
 if __name__ == '__main__':
