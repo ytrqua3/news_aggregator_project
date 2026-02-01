@@ -1,8 +1,9 @@
+#News Aggregator Project
 This project is built to familiarize myself with trainig and deploying the classification model for the music preference project
-link to project: 
+link to project: https://github.com/ytrqua3/music-prefernce-country-classification/
 So I started the extension of the term project in early January and found myself stuck in writing code to train a model in sagemaker as it is not covered in the course.
 Therefore, after I finished with the simple logistic regression model that could be trained using AWS Glue, I decided to take this sagemaker course
-link to course:
+link to course: https://zerotomastery.io/courses/ai-engineer-bootcamp-aws-sagemaker/
 There is a part about load testing and creating an api endpoint for the model, but I already learnt about lambda in my previous course. So I will come back once I have finished with my music preference project.
 
 What this project does: train and deploy a model that classifies news titles into 4 categores: business, entertainment, health, and science
