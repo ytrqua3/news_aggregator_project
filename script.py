@@ -222,10 +222,12 @@ def main():
     output_vocab_path = os.path.join(output_dir, 'tokenizer')
     os.makedirs(output_vocab_path, exist_ok=True)
     tokenizer.save_vocabulary(output_vocab_path)
- 
+    #model.save_pretrained(output_dir)
+    #tokenizer.save_pretrained(output_dir)
 
     print("sucessfully ended script.py")
 
 if __name__ == '__main__':
     main()
+
 
