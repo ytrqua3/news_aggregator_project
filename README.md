@@ -15,7 +15,8 @@ What this project does: train and deploy a model that classifies news titles int
   - test.py, inference_test.py: code used to test the environment and help me have a better understanding on how aws uses instances to run code
 
 
-This is a log of notes and learning points
+This is a log of notes and learning points:
+
 22Jan: Started "AI Engineering: Build, Train and Deploy Models with AWS SageMaker" by Patrik Szepesi in zerotomastery.io 
   - Puropose: to learn how to deply a machine learning model using hugging face in sagemaker for my music preference project
   - deployed a trained sentiment analysis model to get an idea of how huggingface and sagemaker work together (code is not included in this repo)
